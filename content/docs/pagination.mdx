@@ -1,0 +1,80 @@
+---
+title: Pagination
+description: Every list endpoint pages with a cursor. Pass meta.next_cursor back as ?cursor= until has_more is false.
+---
+
+All list endpoints return a page of results and a cursor to the next page:
+
+```json title="GET /api/v1/contacts?limit=2"
+{
+  "data": [
+    { "id": 1043, "first_name": "Rahim" },
+    { "id": 1042, "first_name": "Sara" }
+  ],
+  "meta": {
+    "limit": 2,
+    "has_more": true,
+    "next_cursor": "eyJpZCI6MTA0MiwiX3BvaW50c1RvTmV4dEl0ZW1zIjp0cnVlfQ",
+    "prev_cursor": null
+  }
+}
+```
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `limit` | `25` | Items per page, `1` to `100`. |
+| `cursor` | — | `meta.next_cursor` (forward) or `meta.prev_cursor` (back) from the previous page. |
+
+Cursors are opaque: don't build or parse them. A cursor stays valid while the
+list's filters stay the same, and rows added while you page never make you
+skip or repeat an item.
+
+## Fetch every page
+
+<Tabs items={['JavaScript', 'Python']}>
+<Tab value="JavaScript">
+
+```js
+async function* allContacts() {
+  let cursor = null;
+  do {
+    const url = new URL('https://app.orqo.site/api/v1/contacts');
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${process.env.ORQO_API_TOKEN}` } });
+    const { data, meta } = await res.json();
+    yield* data;
+    cursor = meta.has_more ? meta.next_cursor : null;
+  } while (cursor);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+def all_contacts(session):
+    params = {"limit": 100}
+    while True:
+        page = session.get("https://app.orqo.site/api/v1/contacts", params=params).json()
+        yield from page["data"]
+        if not page["meta"]["has_more"]:
+            break
+        params["cursor"] = page["meta"]["next_cursor"]
+```
+
+</Tab>
+</Tabs>
+
+## Order of each list
+
+| Endpoint | Order |
+| --- | --- |
+| `GET /contacts`, `/segments`, `/campaigns`, `/campaigns/{id}/recipients`, `/segments/{id}/contacts` | Newest first |
+| `GET /conversations` | Most recent message first |
+| `GET /conversations/{id}/messages` | Oldest first (reading order) |
+| `GET /notifications` | Newest first |
+
+Filters are plain query parameters (`?status=open&channel=whatsapp`). An
+unknown value is a `422 validation_failed`, never silently ignored.

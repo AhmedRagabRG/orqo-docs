@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "api": "ORQO REST API v1",
+  "note": "Common cases, not a closed set. Branch on error.code, never on message; for a code not listed here fall back to the HTTP status. retryable: true, false, or null (depends on details).",
+  "envelope": {
+    "error": {
+      "code": "string",
+      "message": "string",
+      "fields": "object (validation_failed only)",
+      "details": "object (optional)"
+    }
+  },
+  "errors": [
+    {
+      "code": "bad_request",
+      "status": 400,
+      "meaning": "The request could not be read.",
+      "retryable": false
+    },
+    {
+      "code": "invalid_idempotency_key",
+      "status": 400,
+      "meaning": "Idempotency-Key is empty, longer than 255 characters or not printable ASCII.",
+      "retryable": false
+    },
+    {
+      "code": "unauthenticated",
+      "status": 401,
+      "meaning": "Missing, wrong, revoked or expired API token.",
+      "retryable": false
+    },
+    {
+      "code": "account_inactive",
+      "status": 401,
+      "meaning": "The token's user is suspended.",
+      "retryable": false
+    },
+    {
+      "code": "subscription_required",
+      "status": 402,
+      "meaning": "The organization has no active plan. details.state says why.",
+      "retryable": false
+    },
+    {
+      "code": "plan_limit_reached",
+      "status": 402,
+      "meaning": "A plan limit is used up. details: key, limit, current.",
+      "retryable": false
+    },
+    {
+      "code": "organization_suspended_for_plan",
+      "status": 402,
+      "meaning": "The organization exceeds its plan and is suspended.",
+      "retryable": false
+    },
+    {
+      "code": "channel_suspended_for_plan",
+      "status": 402,
+      "meaning": "The channel exceeds the plan and is suspended.",
+      "retryable": false
+    },
+    {
+      "code": "forbidden",
+      "status": 403,
+      "meaning": "The token may not do this (for example it lacks the api ability).",
+      "retryable": false
+    },
+    {
+      "code": "organization_required",
+      "status": 403,
+      "meaning": "The token's organization is no longer available.",
+      "retryable": false
+    },
+    {
+      "code": "capability_required",
+      "status": 403,
+      "meaning": "The user lacks the permission for this action. details.capability names it.",
+      "retryable": false
+    },
+    {
+      "code": "not_found",
+      "status": 404,
+      "meaning": "No such resource in your organization, or no such path.",
+      "retryable": false
+    },
+    {
+      "code": "contact_not_found",
+      "status": 404,
+      "meaning": "POST /messages: contact_id is not a contact of your organization.",
+      "retryable": false
+    },
+    {
+      "code": "whatsapp_channel_not_found",
+      "status": 404,
+      "meaning": "POST /messages: channel_account_id is not a WhatsApp account of your organization.",
+      "retryable": false
+    },
+    {
+      "code": "method_not_allowed",
+      "status": 405,
+      "meaning": "Wrong HTTP method for the path.",
+      "retryable": false
+    },
+    {
+      "code": "invalid_state",
+      "status": 409,
+      "meaning": "The resource's status does not allow the action. details.status is the current one.",
+      "retryable": false
+    },
+    {
+      "code": "idempotency_key_reused",
+      "status": 409,
+      "meaning": "The Idempotency-Key was already used with a different body.",
+      "retryable": false
+    },
+    {
+      "code": "idempotency_in_progress",
+      "status": 409,
+      "meaning": "The first request with this Idempotency-Key is still running.",
+      "retryable": true
+    },
+    {
+      "code": "validation_failed",
+      "status": 422,
+      "meaning": "A field or query parameter is invalid. error.fields lists messages per field.",
+      "retryable": false
+    },
+    {
+      "code": "launch_rejected",
+      "status": 422,
+      "meaning": "The campaign cannot be launched yet; message says why.",
+      "retryable": false
+    },
+    {
+      "code": "whatsapp_window_closed",
+      "status": 422,
+      "meaning": "The 24-hour customer-service window is closed; send an approved template.",
+      "retryable": false
+    },
+    {
+      "code": "whatsapp_template_not_approved",
+      "status": 422,
+      "meaning": "The template is not approved for this number and language.",
+      "retryable": false
+    },
+    {
+      "code": "whatsapp_channel_unavailable",
+      "status": 422,
+      "meaning": "No active WhatsApp number or provider credentials to send from.",
+      "retryable": false
+    },
+    {
+      "code": "contact_phone_required",
+      "status": 422,
+      "meaning": "The contact has no WhatsApp phone number.",
+      "retryable": false
+    },
+    {
+      "code": "rate_limited",
+      "status": 429,
+      "meaning": "Too many requests. Wait Retry-After seconds.",
+      "retryable": true
+    },
+    {
+      "code": "server_error",
+      "status": 500,
+      "meaning": "Unexpected server error.",
+      "retryable": true
+    },
+    {
+      "code": "whatsapp_provider_error",
+      "status": 502,
+      "meaning": "WhatsApp rejected the message. details carries the provider's code and message_id.",
+      "retryable": null
+    },
+    {
+      "code": "whatsapp_media_upload_failed",
+      "status": 502,
+      "meaning": "The media could not be uploaded to WhatsApp.",
+      "retryable": null
+    },
+    {
+      "code": "service_unavailable",
+      "status": 503,
+      "meaning": "Temporarily unavailable.",
+      "retryable": true
+    }
+  ]
+}

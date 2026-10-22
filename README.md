@@ -1,47 +1,112 @@
-# orqo-docs
+# ORQO API docs
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Developer documentation for the ORQO REST API, served at **docs.orqo.site**
+(separate from the app at app.orqo.site). Built with
+[Fumadocs](https://fumadocs.dev) on Next.js and exported as a static site.
 
-It is a Next.js app with [Static Export](https://nextjs.org/docs/app/guides/static-exports) configured.
+- **Guides** are MDX in `content/docs/` (quickstart, authentication, errors,
+  pagination, idempotency, rate limits, webhooks, versioning). Sidebar order:
+  `content/docs/meta.json`.
+- **API reference** pages are generated at build time from
+  `public/openapi.json`: one page per operation, grouped by tag, with
+  request/response schemas, code samples and a try-it playground. Nothing to
+  write by hand.
+- **For AI agents**: `/llms.txt`, `/llms-full.txt`, a Markdown copy of every
+  page (`/llms.mdx/docs/<slug>/content.md`), `/openapi.json` and
+  `/errors.json`.
 
-Run development server:
+## Develop
 
 ```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+npm ci
+npm run dev        # http://localhost:3000
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+## Update the API reference
 
-## Explore
+The spec comes from the ORQO app (`orqo-nv`), where Scramble generates it and
+`tests/Feature/Api/OpenApiSpecTest.php` keeps it in sync with the code. After
+an API change is merged there:
 
-In the project, you can see:
+```bash
+# in orqo-nv
+SENTRY_LARAVEL_DSN= php artisan scramble:export     # writes openapi.json
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+# here
+npm run sync:openapi                                # copies ../orqo-nv/openapi.json
+# or: ORQO_OPENAPI=https://example.com/openapi.json npm run sync:openapi
+npm run build
+```
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+For a breaking change also add a row to the changelog in
+`content/docs/versioning.mdx`. New error codes go in both
+`content/docs/errors.mdx` and `public/errors.json`.
 
-### Fumadocs MDX
+## Build
 
-Collections are defined with the [Macro API](https://fumadocs.dev/docs/mdx/macro) in `lib/source.ts`.
+```bash
+npm run build      # static site in out/
+npm start          # serve out/ on http://localhost:3000
+```
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+`next.config.mjs` uses `output: 'export'`, so `out/` is plain HTML, JS and
+JSON. Search runs in the browser (Orama; the index is the static
+`/api/search` file), so no server is needed.
 
-## Learn More
+## Deploy on its own domain (docs.orqo.site)
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
+Any static host works. Two options:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+### A. Cloudflare Pages (recommended)
+
+1. Push this repository to GitHub (for example `AhmedRagabRG/orqo-docs`).
+2. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to
+   Git**, pick the repository.
+3. Build settings: framework preset **None**, build command `npm run build`,
+   output directory `out`, environment variable `NODE_VERSION=22` (or newer).
+4. After the first deploy: **Custom domains → Set up a custom domain** →
+   `docs.orqo.site`. If `orqo.site` uses Cloudflare DNS the record is created
+   for you; otherwise add `CNAME docs <project>.pages.dev` at your DNS host.
+
+Every push to `main` redeploys; pull requests get preview URLs.
+
+### B. Your own server (nginx)
+
+```bash
+npm ci && npm run build
+rsync -a --delete out/ deploy@your-server:/var/www/docs.orqo.site/
+```
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name docs.orqo.site;
+    root /var/www/docs.orqo.site;
+
+    ssl_certificate     /etc/letsencrypt/live/docs.orqo.site/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/docs.orqo.site/privkey.pem;
+
+    location / {
+        try_files $uri $uri.html $uri/index.html =404;
+    }
+    location /_next/static/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    error_page 404 /404.html;
+}
+```
+
+Point a DNS `A` record for `docs` at the server and issue the certificate
+with `certbot --nginx -d docs.orqo.site`.
+
+### The try-it playground and CORS
+
+The playground calls `https://app.orqo.site/api/v1/...` straight from the
+reader's browser with the token they paste in. The app currently allows CORS
+for one EasyOrders endpoint only (`orqo-nv/config/cors.php`), so "Send" in the
+playground fails from docs.orqo.site until the app also allows that origin on
+`api/v1/*` (methods `GET, POST, PATCH, DELETE`; headers `Authorization`,
+`Content-Type`, `Idempotency-Key`, `X-Request-Id`; no credentials). Guides,
+schemas and code samples work either way. Opening CORS is a deliberate
+security decision for the app, so it is not part of this project.

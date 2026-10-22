@@ -1,0 +1,142 @@
+---
+title: Webhooks
+description: Start an ORQO automation from your own system with a signed HTTP request.
+---
+
+An ORQO automation with the **Webhook Received** trigger gets its own URL.
+POST JSON to it from your backend (a new order, a failed payment, a booking)
+and the automation runs: send a WhatsApp template, tag the contact, assign a
+conversation, and so on.
+
+<Callout title="Inbound only, for now">
+ORQO does not yet send outgoing event webhooks (for example "message
+delivered" or "conversation resolved") to your servers. Poll the
+[API](/docs/api) for those. Outgoing webhooks are planned.
+</Callout>
+
+## 1. Create the trigger
+
+In ORQO open **Automations**, create an automation, pick the **Webhook
+Received** trigger and choose **Generate token**. Copy two values from the
+trigger panel:
+
+- the **Webhook URL**, `https://app.orqo.site/webhooks/automation/{trigger_token}`
+- the **Signing secret**. It is shown right after generating; keep it on your
+  server, like an API token.
+
+**Regenerate token** issues a new URL and secret; the old ones stop working.
+Activate the automation: requests to an inactive automation are refused.
+
+## 2. Sign and send the request
+
+Every request must carry two headers:
+
+| Header | Value |
+| --- | --- |
+| `X-Orqo-Timestamp` | Current Unix time in seconds. Requests more than 5 minutes off are refused. |
+| `X-Orqo-Signature` | `sha256=` + hex HMAC-SHA256 of `{timestamp}.{raw body}` with the signing secret. |
+
+Sign the **exact bytes** you send: serialize the JSON once and send that string.
+
+<Tabs items={['Node.js', 'Python', 'PHP', 'cURL']}>
+<Tab value="Node.js">
+
+```js
+import crypto from 'node:crypto';
+
+const body = JSON.stringify({ event: 'order.paid', phone: '+201001234567', order_id: 'A-1042', total: '450.00' });
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const signature = crypto.createHmac('sha256', process.env.ORQO_TRIGGER_SECRET)
+  .update(`${timestamp}.${body}`)
+  .digest('hex');
+
+await fetch(process.env.ORQO_TRIGGER_URL, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Orqo-Timestamp': timestamp,
+    'X-Orqo-Signature': `sha256=${signature}`,
+    'Idempotency-Key': 'order-A-1042-paid',
+  },
+  body,
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import hashlib, hmac, json, os, time, requests
+
+body = json.dumps({"event": "order.paid", "phone": "+201001234567", "order_id": "A-1042"})
+timestamp = str(int(time.time()))
+signature = hmac.new(os.environ["ORQO_TRIGGER_SECRET"].encode(), f"{timestamp}.{body}".encode(), hashlib.sha256).hexdigest()
+
+requests.post(
+    os.environ["ORQO_TRIGGER_URL"],
+    data=body,
+    headers={
+        "Content-Type": "application/json",
+        "X-Orqo-Timestamp": timestamp,
+        "X-Orqo-Signature": f"sha256={signature}",
+        "Idempotency-Key": "order-A-1042-paid",
+    },
+)
+```
+
+</Tab>
+<Tab value="PHP">
+
+```php
+$body = json_encode(['event' => 'order.paid', 'phone' => '+201001234567', 'order_id' => 'A-1042']);
+$timestamp = (string) time();
+$signature = hash_hmac('sha256', "{$timestamp}.{$body}", env('ORQO_TRIGGER_SECRET'));
+
+Http::withBody($body, 'application/json')
+    ->withHeaders([
+        'X-Orqo-Timestamp' => $timestamp,
+        'X-Orqo-Signature' => "sha256={$signature}",
+        'Idempotency-Key' => 'order-A-1042-paid',
+    ])
+    ->post(env('ORQO_TRIGGER_URL'));
+```
+
+</Tab>
+<Tab value="cURL">
+
+```bash
+BODY='{"event":"order.paid","phone":"+201001234567","order_id":"A-1042"}'
+TS=$(date +%s)
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$ORQO_TRIGGER_SECRET" -hex | sed 's/^.* //')
+
+curl "$ORQO_TRIGGER_URL" \
+  -H "Content-Type: application/json" \
+  -H "X-Orqo-Timestamp: $TS" \
+  -H "X-Orqo-Signature: sha256=$SIG" \
+  -d "$BODY"
+```
+
+</Tab>
+</Tabs>
+
+## 3. The payload
+
+Any JSON object. Its fields are available to the automation's steps as
+variables. Two fields are special:
+
+| Field | Effect |
+| --- | --- |
+| `email` | The automation runs for the contact with this email, if one exists. |
+| `phone` | Otherwise, the contact with this E.164 phone number. |
+
+## Responses
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| `202` | `{"status": "accepted"}` | The automation was started. |
+| `200` | `{"status": "duplicate"}` | Same signature or same `Idempotency-Key` seen before: nothing ran again. |
+| `404` | `{"error": "Automation not found or inactive."}` | Wrong URL, inactive automation, or a bad or expired signature. The reason is not revealed on purpose. |
+
+Retry on network errors and `5xx` with the same body and `Idempotency-Key`,
+re-signing with a fresh timestamp. Don't retry a `404`: check the URL, the
+secret and your clock.

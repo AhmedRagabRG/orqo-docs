@@ -1,0 +1,26 @@
+---
+title: Rate limits
+description: 60 requests a minute per user. Read the X-RateLimit headers and back off on 429.
+---
+
+Each token's user may make **60 requests per minute**. Every response says how
+much is left:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | Requests allowed per minute. |
+| `X-RateLimit-Remaining` | Requests left in the current minute. |
+| `Retry-After` | On `429` only: seconds until you may retry. |
+| `X-RateLimit-Reset` | On `429` only: Unix time when the window resets. |
+
+```json title="429 Too Many Requests"
+{ "error": { "code": "rate_limited", "message": "Too Many Attempts." } }
+```
+
+When you get a `429`, wait `Retry-After` seconds before the next request.
+For bulk work (importing thousands of contacts, messaging a list) prefer a
+[campaign](/docs/api) or spread requests out instead of bursting.
+
+Plan limits (contacts, campaigns per month, WhatsApp messages per month) are
+separate from rate limits and answer `402 plan_limit_reached`; see
+[Errors](/docs/errors).

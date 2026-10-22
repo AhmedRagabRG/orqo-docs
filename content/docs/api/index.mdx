@@ -1,0 +1,22 @@
+---
+title: API reference
+description: Every endpoint of the ORQO REST API v1, generated from the OpenAPI spec.
+---
+
+**Base URL** `https://app.orqo.site/api/v1` · **Auth** `Authorization: Bearer <token>` ·
+**Spec** [`/openapi.json`](/openapi.json) (OpenAPI 3.1)
+
+Each page shows the parameters, the request body, every response with its
+schema, code samples in several languages and a playground. All endpoints
+share the conventions in [Errors](/docs/errors), [Pagination](/docs/pagination)
+and [Idempotency](/docs/idempotency).
+
+<Cards>
+  <Card title="Account" href="/docs/api/account/retrieve-the-current-user" description="The current user, organization, subscription, usage and notifications." />
+  <Card title="Contacts" href="/docs/api/contacts/list-contacts" description="Create, list, update and delete contacts." />
+  <Card title="Segments" href="/docs/api/segments/list-segments" description="Static and dynamic groups of contacts." />
+  <Card title="Campaigns" href="/docs/api/campaigns/create-a-campaign" description="Draft, launch and pause WhatsApp template campaigns." />
+  <Card title="Messages" href="/docs/api/messages/send-a-message" description="Send text, templates, interactive messages, Flows and media." />
+  <Card title="Conversations" href="/docs/api/conversations/list-conversations" description="Read inbox conversations and their messages." />
+  <Card title="Analytics" href="/docs/api/analytics/message-volume" description="Message volume, conversation activity and campaign funnels." />
+</Cards>

@@ -1,0 +1,38 @@
+---
+title: Versioning and changelog
+description: How the v1 API changes, and what changed.
+---
+
+The version is part of the path: `/api/v1`. Within v1 we only make
+**additive** changes, which your integration must tolerate:
+
+- new endpoints, new optional request fields and new query parameters;
+- new fields in responses (ignore fields you don't know);
+- new error `code` values (keep a default branch);
+- new enum values, such as a new message `status`.
+
+Anything else (removing or renaming a field, changing a type or a status
+code) ships as a new version, announced here at least 90 days ahead.
+
+## Changelog
+
+### 2026-10 — v1 cleanup
+
+The API moved to the conventions on these pages. If you integrated before:
+
+| Before | Now |
+| --- | --- |
+| Errors as `{"error": "…"}`, `{"message": "…", "code": "…"}` or `{"message", "errors"}` | Always `{"error": {"code", "message", "fields"?, "details"?}}` |
+| `POST /messages/send` → `200` with `idempotent_replay` | `POST /messages` → `201`, result in `data`, replays flagged by the `Idempotent-Replayed` header |
+| `GET /usage` | `GET /subscription/usage` |
+| `GET /analytics/campaign/{id}/funnel` | `GET /analytics/campaigns/{id}/funnel` |
+| Page-number pagination with `links` on campaigns, segments, recipients, notifications and conversation messages | Cursor pagination with `meta` on every list, `?limit=` up to 100 |
+| `DELETE /contacts/{id}` → `200 {"ok": true}` | `204 No Content` |
+| `POST /campaigns/{id}/launch` → `200 {"ok", "status"}` | `202` with the campaign in `data` |
+| `POST /campaigns/{id}/pause`, `PATCH /me` → `{"ok": true}` | The updated resource in `data` |
+| Editing or pausing a campaign in the wrong status → `422` | `409 invalid_state` |
+| Campaign fields `template_ref`, `payload_json` | `template`, `payload` |
+| `organization_id` on every resource | Removed (a token belongs to one organization) |
+| `GET /subscription` → `{"data": null, "subscription_required": true}` | `{"data": null}` |
+| Unvalidated filters were ignored | Unknown filter values are `422` |
+| — | New: `GET /segments/{id}`, `GET /conversations/{id}`, `Idempotency-Key` on creating requests, `X-Request-Id` |

@@ -1,0 +1,43 @@
+---
+title: Idempotency
+description: Send an Idempotency-Key with creating requests so that a retry never creates or sends twice.
+---
+
+Networks fail after the server has acted. If a `POST` times out you can't
+know whether the contact was created or the message sent. Send an
+`Idempotency-Key` and retry with the same key: ORQO acts once and returns the
+first result to every retry.
+
+```bash
+curl https://app.orqo.site/api/v1/messages \
+  -H "Authorization: Bearer $ORQO_API_TOKEN" \
+  -H "Idempotency-Key: order-1042-shipped" \
+  -H "Content-Type: application/json" \
+  -d '{"contact_id": 42, "type": "text", "body": "Your order has shipped"}'
+```
+
+## Which endpoints
+
+| Endpoint | Key remembered for |
+| --- | --- |
+| `POST /contacts` | 24 hours |
+| `POST /segments` | 24 hours |
+| `POST /campaigns` | 24 hours |
+| `POST /campaigns/{id}/launch` | 24 hours |
+| `POST /messages` | Permanently, per organization (also accepted as the `client_message_id` body field) |
+
+`GET`, `PATCH` and `DELETE` are naturally safe to repeat and ignore the header.
+
+## Rules
+
+- **The key**: any string of 1–255 printable ASCII characters. Use something
+  tied to the business event (`order-1042-shipped`) or a UUID you store with the job.
+  For `POST /messages` the key is at most 48 characters of `A-Z a-z 0-9 . _ : -`.
+- **Scope**: per organization (and per user and endpoint for the 24-hour keys).
+- **A retry** with the same key and the same body returns the stored response
+  with the header `Idempotent-Replayed: true`, and does nothing else.
+- **The same key with a different body** is `409 idempotency_key_reused`.
+- **A retry while the first request is still running** is
+  `409 idempotency_in_progress`; wait a moment and retry.
+- **Server errors are not stored**: a `5xx` response can be retried with the
+  same key and runs again.

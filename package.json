@@ -1,18 +1,20 @@
 {
   "name": "orqo-docs",
-  "version": "0.0.50",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "start": "serve out",
     "types:check": "next typegen && tsc --noEmit",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:openapi": "node scripts/sync-openapi.mjs"
   },
   "dependencies": {
     "cn": "^0.5.0",
     "fumadocs-core": "16.17.7",
     "fumadocs-mdx": "15.4.9",
+    "fumadocs-openapi": "12.5.4",
     "fumadocs-ui": "npm:@fumadocs/base-ui@16.17.7",
     "lucide-react": "^1.59.0",
     "next": "16.4.2",
@@ -25,11 +27,11 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.4.2",
     "postcss": "^8.5.31",
     "serve": "^14.2.6",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "16.4.2"
+    "typescript": "^7.0.2"
   }
 }

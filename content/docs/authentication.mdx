@@ -44,7 +44,7 @@ store. Never put it in a browser, a mobile app or a public repository.
 | 401 | `unauthenticated` | No token, or the token is wrong, revoked or expired. |
 | 401 | `account_inactive` | The token's user is suspended. |
 | 402 | `subscription_required` | The organization has no active plan. `GET /me` and `GET /subscription` still work. |
-| 403 | `forbidden` | The token lacks the `api` ability (tokens from before October 2026 must be reissued). |
+| 403 | `forbidden` | The token lacks the `api` ability. Tokens from before the current token format must be reissued. |
 | 403 | `organization_required` | The token's organization is gone or the user left it. |
 
 ```json title="401 Unauthorized"
