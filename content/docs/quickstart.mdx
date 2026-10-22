@@ -1,0 +1,168 @@
+---
+title: Quickstart
+description: Create an API token, add a contact and send your first WhatsApp message.
+---
+
+This guide takes about five minutes. You need an ORQO organization with a
+connected WhatsApp number and an Admin role in it.
+
+<Steps>
+<Step>
+
+### Create an API token
+
+In ORQO open **Settings → API Tokens** (`/app/api-tokens`) and choose **Create token**. Creating a
+token needs two-factor authentication on your account, and the token is shown
+**once**: copy it straight into your server's secret store.
+
+```bash
+export ORQO_API_TOKEN="1|kQ3x…"
+```
+
+<Callout type="warn">
+A token can do everything an Admin can do through the API. Keep it on your
+server; never put it in a web page or a mobile app.
+</Callout>
+
+</Step>
+<Step>
+
+### Check the token
+
+```bash
+curl https://app.orqo.site/api/v1/me \
+  -H "Authorization: Bearer $ORQO_API_TOKEN"
+```
+
+```json title="200 OK"
+{
+  "data": {
+    "id": 7,
+    "name": "Mona Adel",
+    "email": "mona@example.com",
+    "role": "client",
+    "status": "active",
+    "email_verified_at": "2026-09-01T10:00:00Z",
+    "created_at": "2026-09-01T09:58:12Z"
+  }
+}
+```
+
+A `401` with `"code": "unauthenticated"` means the token is wrong, revoked or
+expired.
+
+</Step>
+<Step>
+
+### Add a contact
+
+<Tabs items={['cURL', 'JavaScript', 'Python', 'PHP']}>
+<Tab value="cURL">
+
+```bash
+curl https://app.orqo.site/api/v1/contacts \
+  -H "Authorization: Bearer $ORQO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: contact-rahim-0001" \
+  -d '{"phone_e164": "+201001234567", "first_name": "Rahim", "opt_in_whatsapp": true}'
+```
+
+</Tab>
+<Tab value="JavaScript">
+
+```js
+const res = await fetch('https://app.orqo.site/api/v1/contacts', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.ORQO_API_TOKEN}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'contact-rahim-0001',
+  },
+  body: JSON.stringify({ phone_e164: '+201001234567', first_name: 'Rahim', opt_in_whatsapp: true }),
+});
+const { data: contact } = await res.json();
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import os, requests
+
+res = requests.post(
+    "https://app.orqo.site/api/v1/contacts",
+    headers={
+        "Authorization": f"Bearer {os.environ['ORQO_API_TOKEN']}",
+        "Idempotency-Key": "contact-rahim-0001",
+    },
+    json={"phone_e164": "+201001234567", "first_name": "Rahim", "opt_in_whatsapp": True},
+)
+contact = res.json()["data"]
+```
+
+</Tab>
+<Tab value="PHP">
+
+```php
+$contact = Http::withToken(env('ORQO_API_TOKEN'))
+    ->withHeaders(['Idempotency-Key' => 'contact-rahim-0001'])
+    ->post('https://app.orqo.site/api/v1/contacts', [
+        'phone_e164' => '+201001234567',
+        'first_name' => 'Rahim',
+        'opt_in_whatsapp' => true,
+    ])
+    ->throw()
+    ->json('data');
+```
+
+</Tab>
+</Tabs>
+
+The response is `201 Created` with the contact in `data`. Keep its `id`.
+
+</Step>
+<Step>
+
+### Send a WhatsApp message
+
+A free-form text works while the customer's 24-hour service window is open.
+Outside it, send an approved template ([Send a message](/docs/api/messages/send-a-message)).
+
+```bash
+curl https://app.orqo.site/api/v1/messages \
+  -H "Authorization: Bearer $ORQO_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-1042-shipped" \
+  -d '{"contact_id": 42, "type": "text", "body": "Your order has shipped 🚚"}'
+```
+
+```json title="201 Created"
+{
+  "data": {
+    "id": 901,
+    "provider_message_id": "wamid.HBgM…",
+    "status": "sent",
+    "type": "text",
+    "contact_id": 42,
+    "conversation_id": 18,
+    "conversation_uuid": "9b1f…",
+    "channel_account_id": 3,
+    "to": "+201001234567",
+    "sent_at": "2026-10-22T09:30:00Z"
+  }
+}
+```
+
+The message appears in the ORQO inbox in the contact's conversation, and
+replies come back there.
+
+</Step>
+</Steps>
+
+## What's next?
+
+<Cards>
+  <Card title="Errors" href="/docs/errors" description="Handle window_closed, plan limits and validation errors." />
+  <Card title="Campaigns" href="/docs/api/campaigns/create-a-campaign" description="Send a template to a whole segment." />
+  <Card title="Webhooks" href="/docs/webhooks" description="Start an ORQO automation from your own system." />
+</Cards>

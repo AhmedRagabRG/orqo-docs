@@ -1,0 +1,38 @@
+---
+title: ORQO API
+description: Manage contacts, send WhatsApp messages, run campaigns and read conversations from your own systems.
+---
+
+The ORQO REST API gives your backend the same data your team sees in the ORQO
+inbox: contacts and segments, WhatsApp campaigns, outbound messages,
+conversations and analytics. Every request acts on one organization, the one
+your API token belongs to.
+
+```bash title="Your first request"
+curl https://app.orqo.site/api/v1/me \
+  -H "Authorization: Bearer $ORQO_API_TOKEN"
+```
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart" description="Create a token, add a contact and send a message in five minutes." />
+  <Card title="Authentication" href="/docs/authentication" description="API tokens, what they can do, and how to keep them safe." />
+  <Card title="Errors" href="/docs/errors" description="One error envelope, stable codes, and when to retry." />
+  <Card title="API reference" href="/docs/api" description="Every endpoint, with request and response examples you can try." />
+</Cards>
+
+## Rules that hold for every endpoint
+
+- **Base URL** `https://app.orqo.site/api/v1`. JSON in, JSON out.
+- **Success** is `{"data": ...}`; lists add `"meta"` with a cursor ([Pagination](/docs/pagination)).
+- **Failure** is `{"error": {"code", "message"}}`. Branch on `code`, never on `message` ([Errors](/docs/errors)).
+- **Retries** of creating requests are safe with an `Idempotency-Key` header ([Idempotency](/docs/idempotency)).
+- **Timestamps** are ISO 8601 in UTC (`2026-10-22T09:30:00Z`); IDs are integers.
+- **Tokens are server-only.** Never ship an API token in a browser or mobile app.
+
+## For AI agents and LLMs
+
+These pages are also available as plain Markdown:
+[`/llms.txt`](/llms.txt) lists every page, [`/llms-full.txt`](/llms-full.txt)
+holds all of them in one file, the raw spec is at
+[`/openapi.json`](/openapi.json) and the error catalogue at
+[`/errors.json`](/errors.json).

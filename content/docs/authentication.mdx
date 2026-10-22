@@ -1,0 +1,58 @@
+---
+title: Authentication
+description: Authenticate every request with an organization API token in the Authorization header.
+---
+
+Every request carries one API token as a bearer token:
+
+```http
+GET /api/v1/contacts HTTP/1.1
+Host: app.orqo.site
+Authorization: Bearer 1|kQ3x…
+Accept: application/json
+```
+
+## API tokens
+
+| | |
+| --- | --- |
+| **Where** | **Settings → API Tokens** in the ORQO app. |
+| **Who** | Organization Admins with two-factor authentication turned on. Each new token asks for a fresh 2FA code. |
+| **Scope** | One organization: the one that was active when the token was created. Every request acts on it. |
+| **Lifetime** | Optional expiry date, at most one year ahead. Without one, tokens expire after a year. |
+| **Shown** | Once, at creation. ORQO stores only a hash. |
+
+A token stops working when it is revoked, when it expires, or when its creator
+stops being an Admin of the organization.
+
+<Callout type="error" title="Server-only">
+A token can read and change every contact, campaign and conversation of the
+organization and send messages billed to it. Keep it in your server's secret
+store. Never put it in a browser, a mobile app or a public repository.
+</Callout>
+
+## Rotating a token
+
+1. Create a new token in **Settings → API Tokens**.
+2. Deploy your integration with the new token.
+3. Revoke the old token from the same page. Revocation is immediate.
+
+## Authentication errors
+
+| Status | `error.code` | Meaning |
+| --- | --- | --- |
+| 401 | `unauthenticated` | No token, or the token is wrong, revoked or expired. |
+| 401 | `account_inactive` | The token's user is suspended. |
+| 402 | `subscription_required` | The organization has no active plan. `GET /me` and `GET /subscription` still work. |
+| 403 | `forbidden` | The token lacks the `api` ability (tokens from before October 2026 must be reissued). |
+| 403 | `organization_required` | The token's organization is gone or the user left it. |
+
+```json title="401 Unauthorized"
+{ "error": { "code": "unauthenticated", "message": "Unauthenticated." } }
+```
+
+## Request IDs
+
+Every response carries an `X-Request-Id` header. Send your own (8–128
+characters of `A-Z a-z 0-9 . _ -`) to correlate logs, or keep the one ORQO
+generates and quote it when you contact support.

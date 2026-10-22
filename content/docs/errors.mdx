@@ -1,0 +1,93 @@
+---
+title: Errors
+description: One error envelope for every failure, stable codes to branch on, and when it is safe to retry.
+---
+
+Every failure from `/api/v1` has the same shape, whatever produced it:
+
+```json
+{
+  "error": {
+    "code": "validation_failed",
+    "message": "The email field must be a valid email address.",
+    "fields": {
+      "email": ["The email field must be a valid email address."]
+    }
+  }
+}
+```
+
+| Field | Always | Meaning |
+| --- | --- | --- |
+| `error.code` | yes | Stable, lowercase `snake_case`. **The contract.** |
+| `error.message` | yes | A sentence for a developer reading a log. Wording changes without notice. |
+| `error.fields` | no | `validation_failed` only: messages per field, keyed by field name (`template.name` for nested fields). |
+| `error.details` | no | Extra context for the code, such as `state` or `limit`. |
+
+## Branch on `code`, never on `message`
+
+```js
+const res = await fetch(url, options);
+if (!res.ok) {
+  const { error } = await res.json();
+  switch (error.code) {
+    case 'whatsapp_window_closed':
+      return sendTemplateInstead();
+    case 'plan_limit_reached':
+      return notifyBilling(error.details);
+    case 'rate_limited':
+      return retryAfter(res.headers.get('Retry-After'));
+    default:
+      // A code this build predates: fall back to the HTTP status.
+      return res.status >= 500 ? scheduleRetry() : failPermanently(error);
+  }
+}
+```
+
+New codes are added as features ship, so always keep a `default` branch.
+
+## Codes
+
+| Status | Code | When | Retry? |
+| --- | --- | --- | --- |
+| 400 | `bad_request` | The request could not be read. | No |
+| 400 | `invalid_idempotency_key` | `Idempotency-Key` is empty, too long or not printable ASCII. | No |
+| 401 | `unauthenticated` | Missing, wrong, revoked or expired token. | No |
+| 402 | `subscription_required` | The organization has no active plan. `details.state` says why. | No |
+| 402 | `plan_limit_reached` | A plan limit is used up. `details`: `key`, `limit`, `current`. | No |
+| 402 | `organization_suspended_for_plan`, `channel_suspended_for_plan` | The organization or the channel is over its plan. | No |
+| 403 | `forbidden` | The token may not do this. | No |
+| 403 | `organization_required` | The token's organization is no longer available. | No |
+| 404 | `not_found` | No such resource in your organization, or no such path. | No |
+| 404 | `contact_not_found`, `whatsapp_channel_not_found` | `contact_id` / `channel_account_id` of a message is not yours. | No |
+| 405 | `method_not_allowed` | Wrong HTTP method for the path. | No |
+| 409 | `invalid_state` | The resource's status does not allow the action. `details.status` is the current one. | No |
+| 409 | `idempotency_key_reused` | The key was used with a different body. | No |
+| 409 | `idempotency_in_progress` | The first request with this key is still running. | Yes, shortly |
+| 422 | `validation_failed` | A field or query parameter is invalid. See `fields`. | No |
+| 422 | `launch_rejected` | The campaign cannot be launched yet (WhatsApp not ready, no recipients…). | After fixing |
+| 422 | `whatsapp_window_closed` | The 24-hour service window is closed: send an approved template. | No |
+| 422 | `whatsapp_template_not_approved` | The template is not approved for this number and language. | No |
+| 422 | `whatsapp_channel_unavailable` | No active WhatsApp number to send from. | After fixing |
+| 422 | `contact_phone_required` | The contact has no phone number. | No |
+| 429 | `rate_limited` | Too many requests. Wait `Retry-After` seconds. | Yes |
+| 500 | `server_error` | Something broke on our side. | Yes, with backoff |
+| 502 | `whatsapp_provider_error`, `whatsapp_media_upload_failed` | WhatsApp refused the message. `details` has the provider's code. | Depends on `details` |
+| 503 | `service_unavailable` | Temporarily unavailable. | Yes, with backoff |
+
+The same list is published as JSON at [`/errors.json`](/errors.json).
+
+## Retrying safely
+
+- Retry only `409 idempotency_in_progress`, `429`, and `5xx`. Every other
+  `4xx` fails the same way forever.
+- Back off exponentially (for example 1 s, 2 s, 4 s … capped at 60 s) and honour `Retry-After`.
+- Send an [`Idempotency-Key`](/docs/idempotency) with every creating request so a
+  retry after a timeout cannot create or send twice.
+
+<Callout type="warn" title="A 502 on a message is not always a failure to send">
+`whatsapp_provider_error` means WhatsApp answered with an error, and the message
+is stored as failed (`details.message_id`). Retrying with the **same**
+Idempotency-Key is safe: a definitively failed attempt may be retried, while an
+accepted one is returned instead of being sent again.
+</Callout>
