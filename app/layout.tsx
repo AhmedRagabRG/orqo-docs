@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://docs.orqo.site'),
   title: { default: 'ORQO API', template: '%s' },
   description: 'Developer documentation for the ORQO REST API.',
+  icons: {
+    icon: [{ url: '/brand/orqo-icon-32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/brand/orqo-icon-180.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

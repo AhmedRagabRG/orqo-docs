@@ -3,6 +3,19 @@
 @import 'fumadocs-ui/css/preset.css';
 @import 'fumadocs-openapi/css/preset.css';
 
+/* ORQO brand teal (orqo-nv public/images/brand): #054F56 deep, #60CFC3 accent. */
+@theme {
+  --color-fd-primary: #054f56;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-ring: #60cfc3;
+}
+
+.dark {
+  --color-fd-primary: #60cfc3;
+  --color-fd-primary-foreground: #04262a;
+  --color-fd-ring: #60cfc3;
+}
+
 html {
   scrollbar-gutter: stable;
 }

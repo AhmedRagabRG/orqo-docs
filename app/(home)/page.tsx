@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { OrqoLogo } from '@/components/orqo-logo';
 
 const cards = [
   { title: 'Quickstart', href: '/docs/quickstart', text: 'Create a token, add a contact and send a WhatsApp message in five minutes.' },
@@ -11,7 +12,10 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-16">
       <section className="flex flex-col gap-4">
-        <p className="text-sm font-medium text-fd-primary">ORQO developer docs</p>
+        <div className="self-start">
+          <OrqoLogo className="h-10" />
+        </div>
+        <p className="text-sm font-medium text-fd-primary">Developer docs</p>
         <h1 className="text-4xl font-bold tracking-tight">Build on ORQO</h1>
         <p className="max-w-2xl text-lg text-fd-muted-foreground">
           Sync contacts, send WhatsApp messages, run campaigns and read conversations from your own
