@@ -41,3 +41,6 @@ curl https://app.orqo.site/api/v1/messages \
   `409 idempotency_in_progress`; wait a moment and retry.
 - **Server errors are not stored**: a `5xx` response can be retried with the
   same key and runs again.
+- **Other errors are stored** (24-hour keys): a `422` or `402` answer is
+  replayed for the same key. After fixing the cause (a field, your plan),
+  retry with a **new** key.

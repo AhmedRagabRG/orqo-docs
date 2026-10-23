@@ -11,6 +11,14 @@ schema, code samples in several languages and a playground. All endpoints
 share the conventions in [Errors](/docs/errors), [Pagination](/docs/pagination)
 and [Idempotency](/docs/idempotency).
 
+<Callout type="warn" title="The playground makes real requests">
+**Try in Playground** sends the request from your browser to
+`https://app.orqo.site` with the token you paste after `Bearer ` in the
+Authorization field. It acts on your organization like any other API call
+(it can create contacts or send messages). Prefer a short-lived token, and
+revoke it when you're done.
+</Callout>
+
 <Cards>
   <Card title="Account" href="/docs/api/account/retrieve-the-current-user" description="The current user, organization, subscription, usage and notifications." />
   <Card title="Contacts" href="/docs/api/contacts/list-contacts" description="Create, list, update and delete contacts." />

@@ -62,6 +62,7 @@ New codes are added as features ship, so always keep a `default` branch.
 | 404 | `contact_not_found`, `whatsapp_channel_not_found` | `contact_id` / `channel_account_id` of a message is not yours. | No |
 | 405 | `method_not_allowed` | Wrong HTTP method for the path. | No |
 | 409 | `invalid_state` | The resource's status does not allow the action. `details.status` is the current one. | No |
+| 409 | `contact_already_exists` | Another contact of yours (possibly a deleted one) has this phone number. `details.contact_id` when it is visible. | No |
 | 409 | `idempotency_key_reused` | The key was used with a different body. | No |
 | 409 | `idempotency_in_progress` | The first request with this key is still running. | Yes, shortly |
 | 422 | `validation_failed` | A field or query parameter is invalid. See `fields`. | No |

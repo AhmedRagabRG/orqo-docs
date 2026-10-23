@@ -108,6 +108,12 @@
       "retryable": false
     },
     {
+      "code": "contact_already_exists",
+      "status": 409,
+      "meaning": "Another contact of the organization (possibly a deleted one) has this phone number. details.contact_id when it is visible.",
+      "retryable": false
+    },
+    {
       "code": "idempotency_key_reused",
       "status": 409,
       "meaning": "The Idempotency-Key was already used with a different body.",

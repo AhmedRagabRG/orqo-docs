@@ -678,7 +678,7 @@
       },
       "post": {
         "operationId": "create-a-contact",
-        "description": "Send an `Idempotency-Key` header to retry safely.",
+        "description": "Send an `Idempotency-Key` header to retry safely. A phone number that\nanother contact already has is `409 contact_already_exists`, with that\ncontact's id in `details.contact_id`.",
         "summary": "Create a contact",
         "tags": [
           "Contacts"

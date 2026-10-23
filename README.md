@@ -103,10 +103,30 @@ with `certbot --nginx -d docs.orqo.site`.
 ### The try-it playground and CORS
 
 The playground calls `https://app.orqo.site/api/v1/...` straight from the
-reader's browser with the token they paste in. The app currently allows CORS
-for one EasyOrders endpoint only (`orqo-nv/config/cors.php`), so "Send" in the
-playground fails from docs.orqo.site until the app also allows that origin on
-`api/v1/*` (methods `GET, POST, PATCH, DELETE`; headers `Authorization`,
-`Content-Type`, `Idempotency-Key`, `X-Request-Id`; no credentials). Guides,
-schemas and code samples work either way. Opening CORS is a deliberate
-security decision for the app, so it is not part of this project.
+reader's browser with the API token they paste in. The app allows this with
+its own CORS policy for the public API (`orqo-nv/config/api.php`), driven by
+an exact-origin allowlist:
+
+```dotenv
+# orqo-nv .env (production)
+API_CORS_ALLOWED_ORIGINS=https://docs.orqo.site
+```
+
+Wildcards are ignored, `http://` is accepted only for `localhost`, and no
+credentials (cookies) are ever allowed cross-origin: the playground works with
+a bearer token only. Add a preview domain (for example a Cloudflare Pages
+preview URL) to the list only if you want its playground to work too.
+
+To try the playground against a local app, export a spec whose server is
+your local URL and build from it (don't commit that spec):
+
+```bash
+# in orqo-nv, with API_CORS_ALLOWED_ORIGINS=http://localhost:3000 in .env
+API_DOCS_SERVER_URL=http://localhost:8000/api php artisan scramble:export --path=/tmp/openapi.local.json
+# here
+ORQO_OPENAPI=/tmp/openapi.local.json npm run sync:openapi && npm run dev
+# afterwards: npm run sync:openapi   (restores the production spec)
+```
+
+In the playground, the Authorization field starts with `Bearer `; paste the
+token after it.
