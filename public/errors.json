@@ -110,7 +110,7 @@
     {
       "code": "contact_already_exists",
       "status": 409,
-      "meaning": "Another contact of the organization (possibly a deleted one) has this phone number. details.contact_id when it is visible.",
+      "meaning": "PATCH /contacts/{id}: the new phone number belongs to a deleted contact (a live contact with it is a 422 validation_failed).",
       "retryable": false
     },
     {

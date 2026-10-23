@@ -35,4 +35,7 @@ The API moved to the conventions on these pages. If you integrated before:
 | `organization_id` on every resource | Removed (a token belongs to one organization) |
 | `GET /subscription` → `{"data": null, "subscription_required": true}` | `{"data": null}` |
 | Unvalidated filters were ignored | Unknown filter values are `422` |
+| `POST /contacts` always inserted (a taken phone number was a `500`) | Creates **or updates** the contact matched by `phone_e164` (else `email`), like the app: `201` new, `200` updated; a deleted contact with that number is restored |
+| `custom_fields` accepted any key | Keys must be contact fields defined in Settings; values are cast to the field's type (`422` otherwise) |
+| Dynamic segments created through the API stayed empty | They are filled from `rules` on creation |
 | — | New: `GET /segments/{id}`, `GET /conversations/{id}`, `Idempotency-Key` on creating requests, `X-Request-Id` |

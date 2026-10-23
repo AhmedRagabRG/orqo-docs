@@ -677,9 +677,9 @@
         }
       },
       "post": {
-        "operationId": "create-a-contact",
-        "description": "Send an `Idempotency-Key` header to retry safely. A phone number that\nanother contact already has is `409 contact_already_exists`, with that\ncontact's id in `details.contact_id`.",
-        "summary": "Create a contact",
+        "operationId": "create-or-update-a-contact",
+        "description": "Contacts are matched like everywhere else in ORQO: by `phone_e164`, or\nby `email` when no phone is given. A new contact is `201`; an existing\none (or a deleted one with that number, which is restored) is updated\nand returned with `200`. `custom_fields` keys must be contact fields\ndefined in Settings. Send an `Idempotency-Key` header to retry safely.",
+        "summary": "Create or update a contact",
         "tags": [
           "Contacts"
         ],
@@ -752,26 +752,24 @@
                       "null"
                     ]
                   },
-                  "source": {
-                    "type": [
-                      "string",
-                      "null"
-                    ],
-                    "maxLength": 100
-                  },
                   "custom_fields": {
                     "type": [
                       "array",
                       "null"
                     ],
+                    "description": "Values keyed by contact field key (Settings → Contact fields).",
                     "items": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "maxLength": 1000
+                      "type": "string"
                     },
                     "maxItems": 50
+                  },
+                  "source": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Defaults to `api`.",
+                    "maxLength": 100
                   }
                 }
               }
@@ -779,8 +777,26 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "An existing contact with this phone or email was updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Contact"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
           "201": {
-            "description": "`Contact`",
+            "description": "A new contact was created.",
             "content": {
               "application/json": {
                 "schema": {
@@ -876,7 +892,7 @@
       },
       "patch": {
         "operationId": "update-a-contact",
-        "description": "Only the fields you send change.",
+        "description": "Only the fields you send change. A `phone_e164` another contact already\nhas is `422 validation_failed`.",
         "summary": "Update a contact",
         "tags": [
           "Contacts"
@@ -926,17 +942,19 @@
                   "opt_in_whatsapp": {
                     "type": "boolean"
                   },
+                  "custom_fields": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 50
+                  },
                   "source": {
                     "type": "string",
                     "maxLength": 100
-                  },
-                  "custom_fields": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "maxLength": 1000
-                    },
-                    "maxItems": 50
                   }
                 }
               }
@@ -1118,7 +1136,7 @@
       },
       "post": {
         "operationId": "create-a-segment",
-        "description": "Send an `Idempotency-Key` header to retry safely.",
+        "description": "A dynamic segment is filled from its `rules` right away. Send an `Idempotency-Key` header to retry safely.",
         "summary": "Create a segment",
         "tags": [
           "Segments"

@@ -118,7 +118,7 @@ $contact = Http::withToken(env('ORQO_API_TOKEN'))
 </Tab>
 </Tabs>
 
-The response is `201 Created` with the contact in `data`. Keep its `id`.
+The response is `201 Created` with the contact in `data` (or `200` if a contact with that number already existed: it is updated instead). Keep its `id`.
 
 </Step>
 <Step>
