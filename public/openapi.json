@@ -399,7 +399,7 @@
     "/v1/notifications": {
       "get": {
         "operationId": "list-notifications",
-        "description": "The current user's in-app notifications, newest first.",
+        "description": "The current user's in-app notifications for the token's organization,\nnewest first.",
         "summary": "List notifications",
         "tags": [
           "Account"
@@ -1171,22 +1171,87 @@
                     "description": "Defaults to `static`.",
                     "enum": [
                       "static",
-                      "dynamic"
+                      "dynamic",
+                      null
                     ]
                   },
                   "rules": {
-                    "type": [
-                      "array",
-                      "null"
-                    ],
-                    "description": "Filter rules of a dynamic segment.",
-                    "items": {
-                      "type": "string"
+                    "type": "object",
+                    "properties": {
+                      "combinator": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "enum": [
+                          "AND",
+                          "OR",
+                          "and",
+                          "or",
+                          null
+                        ]
+                      },
+                      "conditions": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string",
+                              "enum": [
+                                "phone_e164",
+                                "email",
+                                "first_name",
+                                "last_name",
+                                "country",
+                                "language",
+                                "source",
+                                "opt_in_whatsapp",
+                                "created_at",
+                                "last_seen_at"
+                              ]
+                            },
+                            "operator": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "=",
+                                "!=",
+                                "like",
+                                "not_like",
+                                "<",
+                                ">",
+                                "<=",
+                                ">=",
+                                "is_null",
+                                "is_not_null",
+                                null
+                              ]
+                            },
+                            "value": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "field"
+                          ]
+                        },
+                        "maxItems": 20
+                      }
                     }
                   }
                 },
                 "required": [
-                  "name"
+                  "name",
+                  "rules"
                 ]
               }
             }
@@ -1558,7 +1623,8 @@
                       "segment",
                       "contact_list",
                       "tag",
-                      "csv"
+                      "csv",
+                      null
                     ]
                   },
                   "audience_ref": {
@@ -3370,7 +3436,8 @@
                   "product_list",
                   "catalog_message",
                   "location_request_message",
-                  "address_message"
+                  "address_message",
+                  null
                 ]
               }
             }
@@ -3408,7 +3475,8 @@
                 ],
                 "enum": [
                   "navigate",
-                  "data_exchange"
+                  "data_exchange",
+                  null
                 ]
               },
               "screen": {
@@ -3455,7 +3523,8 @@
                 ],
                 "enum": [
                   "published",
-                  "draft"
+                  "draft",
+                  null
                 ]
               }
             }
