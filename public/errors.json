@@ -180,6 +180,12 @@
       "retryable": null
     },
     {
+      "code": "whatsapp_delivery_unknown",
+      "status": 502,
+      "meaning": "WhatsApp may have received the message but delivery could not be confirmed (timeout, WhatsApp 5xx, or no message id). Stored as unknown; never re-sent automatically. A same-key retry answers the same 502.",
+      "retryable": false
+    },
+    {
       "code": "whatsapp_media_upload_failed",
       "status": 502,
       "meaning": "The media could not be uploaded to WhatsApp.",

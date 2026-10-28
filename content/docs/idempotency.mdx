@@ -40,7 +40,36 @@ curl https://app.orqo.site/api/v1/messages \
 - **A retry while the first request is still running** is
   `409 idempotency_in_progress`; wait a moment and retry.
 - **Server errors are not stored**: a `5xx` response can be retried with the
-  same key and runs again.
+  same key and runs again — except on `POST /messages`, below.
 - **Other errors are stored** (24-hour keys): a `422` or `402` answer is
   replayed for the same key. After fixing the cause (a field, your plan),
   retry with a **new** key.
+
+## Sending messages
+
+`POST /messages` remembers the outcome of every key, across your whole
+organization, so a retry never sends a message twice — even if it would now go
+out through a different WhatsApp number. Reusing a key for a **different**
+request (another recipient, number, type or content) is
+`409 idempotency_key_reused`; use a new key. A retry with the same key and
+request answers by what happened to the first one:
+
+| First request | Retry with the same key |
+| --- | --- |
+| Accepted by WhatsApp (`sent`, `delivered`, `read`) | `201` with the original message and `Idempotent-Replayed: true` |
+| Delivery not confirmed (`502 whatsapp_delivery_unknown`) | The same `502`. Nothing is sent; check the conversation before sending again with a **new** key |
+| Still being sent by the first request | `409 idempotency_in_progress`; retry shortly |
+| Failed (WhatsApp rejected it, or later reported it undelivered) | A new attempt of the same message |
+
+`201` always means WhatsApp accepted the message.
+
+### Not waiting for WhatsApp
+
+Where asynchronous sending is enabled for your organization, send
+`Prefer: respond-async` to queue the message instead of waiting for WhatsApp.
+The answer is `202` with `Preference-Applied: respond-async`, the message
+(`status: queued`) and a `Location` header; poll `GET /v1/messages/{id}` until
+the status is final (`sent`, `delivered`, `read`, `failed` or `unknown`; `error`
+explains the last two). A same-key retry while it is still queued gets the same
+`202`. Without the header, or where it is not enabled, the request is
+synchronous as above (no `Preference-Applied` header).

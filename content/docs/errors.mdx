@@ -74,14 +74,16 @@ New codes are added as features ship, so always keep a `default` branch.
 | 429 | `rate_limited` | Too many requests. Wait `Retry-After` seconds. | Yes |
 | 500 | `server_error` | Something broke on our side. | Yes, with backoff |
 | 502 | `whatsapp_provider_error`, `whatsapp_media_upload_failed` | WhatsApp refused the message. `details` has the provider's code. | Depends on `details` |
+| 502 | `whatsapp_delivery_unknown` | WhatsApp may have received the message, but Orqo cannot confirm it (timeout, a WhatsApp 5xx, or an answer without a message id). Stored as `unknown`. | **No.** A same-key retry answers the same `502` and never sends again |
 | 503 | `service_unavailable` | Temporarily unavailable. | Yes, with backoff |
 
 The same list is published as JSON at [`/errors.json`](/errors.json).
 
 ## Retrying safely
 
-- Retry only `409 idempotency_in_progress`, `429`, and `5xx`. Every other
-  `4xx` fails the same way forever.
+- Retry only `409 idempotency_in_progress`, `429`, and `5xx` — except
+  `502 whatsapp_delivery_unknown`, which must not be retried automatically.
+  Every other `4xx` fails the same way forever.
 - Back off exponentially (for example 1 s, 2 s, 4 s … capped at 60 s) and honour `Retry-After`.
 - Send an [`Idempotency-Key`](/docs/idempotency) with every creating request so a
   retry after a timeout cannot create or send twice.
@@ -89,6 +91,15 @@ The same list is published as JSON at [`/errors.json`](/errors.json).
 <Callout type="warn" title="A 502 on a message is not always a failure to send">
 `whatsapp_provider_error` means WhatsApp answered with an error, and the message
 is stored as failed (`details.message_id`). Retrying with the **same**
-Idempotency-Key is safe: a definitively failed attempt may be retried, while an
-accepted one is returned instead of being sent again.
+Idempotency-Key is safe: a definitively failed attempt is sent again as a new
+attempt, while an accepted one is returned (`201`, `Idempotent-Replayed: true`)
+instead of being sent again. A message WhatsApp later reports as undelivered is
+also failed: the customer did not receive it, so a same-key retry sends it again.
+
+`whatsapp_delivery_unknown` means the outcome is not known: the request may have
+reached WhatsApp. This includes every `5xx` answer from WhatsApp, which used to
+be reported as `whatsapp_provider_error`. The message is stored as `unknown`
+and is never re-sent automatically: retrying with the same Idempotency-Key
+answers the same `502` again. Check the conversation (or
+`GET /v1/messages/{id}`) before sending a new message, which needs a new key.
 </Callout>
