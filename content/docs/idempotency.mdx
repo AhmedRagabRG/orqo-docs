@@ -47,9 +47,12 @@ curl https://app.orqo.site/api/v1/messages \
 
 ## Sending messages
 
-`POST /messages` remembers the outcome of every key, so a retry never sends a
-message twice. A retry with the same key answers by what happened to the first
-request:
+`POST /messages` remembers the outcome of every key, across your whole
+organization, so a retry never sends a message twice — even if it would now go
+out through a different WhatsApp number. Reusing a key for a **different**
+request (another recipient, number, type or content) is
+`409 idempotency_key_reused`; use a new key. A retry with the same key and
+request answers by what happened to the first one:
 
 | First request | Retry with the same key |
 | --- | --- |

@@ -399,7 +399,7 @@
     "/v1/notifications": {
       "get": {
         "operationId": "list-notifications",
-        "description": "The current user's in-app notifications, newest first.",
+        "description": "The current user's in-app notifications for the token's organization,\nnewest first.",
         "summary": "List notifications",
         "tags": [
           "Account"
@@ -1171,22 +1171,87 @@
                     "description": "Defaults to `static`.",
                     "enum": [
                       "static",
-                      "dynamic"
+                      "dynamic",
+                      null
                     ]
                   },
                   "rules": {
-                    "type": [
-                      "array",
-                      "null"
-                    ],
-                    "description": "Filter rules of a dynamic segment.",
-                    "items": {
-                      "type": "string"
+                    "type": "object",
+                    "properties": {
+                      "combinator": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "enum": [
+                          "AND",
+                          "OR",
+                          "and",
+                          "or",
+                          null
+                        ]
+                      },
+                      "conditions": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "field": {
+                              "type": "string",
+                              "enum": [
+                                "phone_e164",
+                                "email",
+                                "first_name",
+                                "last_name",
+                                "country",
+                                "language",
+                                "source",
+                                "opt_in_whatsapp",
+                                "created_at",
+                                "last_seen_at"
+                              ]
+                            },
+                            "operator": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "enum": [
+                                "=",
+                                "!=",
+                                "like",
+                                "not_like",
+                                "<",
+                                ">",
+                                "<=",
+                                ">=",
+                                "is_null",
+                                "is_not_null",
+                                null
+                              ]
+                            },
+                            "value": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "field"
+                          ]
+                        },
+                        "maxItems": 20
+                      }
                     }
                   }
                 },
                 "required": [
-                  "name"
+                  "name",
+                  "rules"
                 ]
               }
             }
@@ -1558,7 +1623,8 @@
                       "segment",
                       "contact_list",
                       "tag",
-                      "csv"
+                      "csv",
+                      null
                     ]
                   },
                   "audience_ref": {
@@ -2108,7 +2174,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
-            "description": "Up to 48 letters, digits, `.`, `_`, `:` or `-`, such as a UUID (same as `client_message_id`). A retry with the same key never sends twice: `201` with the original message and `Idempotent-Replayed: true` once WhatsApp accepted it, the same `502 whatsapp_delivery_unknown` when delivery could not be confirmed, `409 idempotency_in_progress` while the first request is still sending, and a new attempt after a definitive failure (including a failure WhatsApp reported after accepting it: the customer did not receive it).",
+            "description": "Up to 48 letters, digits, `.`, `_`, `:` or `-`, such as a UUID (same as `client_message_id`), unique across your organization. The same key with a different request is `409 idempotency_key_reused`. A retry with the same key and request never sends twice: `201` with the original message and `Idempotent-Replayed: true` once WhatsApp accepted it, the same `502 whatsapp_delivery_unknown` when delivery could not be confirmed, `409 idempotency_in_progress` while the first request is still sending, and a new attempt after a definitive failure (including a failure WhatsApp reported after accepting it: the customer did not receive it).",
             "schema": {
               "type": "string"
             },
@@ -2151,6 +2217,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "Idempotent-Replayed": {
+                "description": "Present (`true`) when this answers a retry with the same key; nothing was sent again.",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "202": {
@@ -2167,6 +2241,28 @@
                   "required": [
                     "data"
                   ]
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of `GET /v1/messages/{id}` for this message.",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Preference-Applied": {
+                "description": "`respond-async`.",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "description": "Present (`true`) when this answers a retry with the same key; nothing was sent again.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -3342,7 +3438,7 @@
               "string",
               "null"
             ],
-            "description": "Retrying with the same key never sends twice (scoped to the\nrecipient conversation in this organization).",
+            "description": "Idempotency key, unique across your organization: a retry with\nthe same key and the same request never sends twice, whichever\nchannel account it resolves to; the same key with a different\nrequest is `409 idempotency_key_reused`.",
             "pattern": "^[A-Za-z0-9._:-]{1,48}$"
           },
           "body": {
@@ -3455,7 +3551,8 @@
                   "product_list",
                   "catalog_message",
                   "location_request_message",
-                  "address_message"
+                  "address_message",
+                  null
                 ]
               }
             }
@@ -3493,7 +3590,8 @@
                 ],
                 "enum": [
                   "navigate",
-                  "data_exchange"
+                  "data_exchange",
+                  null
                 ]
               },
               "screen": {
@@ -3540,7 +3638,8 @@
                 ],
                 "enum": [
                   "published",
-                  "draft"
+                  "draft",
+                  null
                 ]
               }
             }
