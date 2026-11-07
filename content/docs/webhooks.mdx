@@ -1,64 +1,136 @@
 ---
 title: Webhooks
-description: Start an ORQO automation from your own system with a signed HTTP request.
+description: Receive signed, real-time event notifications from ORQO on your own server.
 ---
 
-An ORQO automation with the **Webhook Received** trigger gets its own URL.
-POST JSON to it from your backend (a new order, a failed payment, a booking)
-and the automation runs: send a WhatsApp template, tag the contact, assign a
-conversation, and so on.
+ORQO can send an HTTPS `POST` to your server whenever something happens in
+your organization: a contact is created, a message arrives, a conversation is
+resolved, a lead changes stage.
 
-<Callout title="Inbound only, for now">
-ORQO does not yet send outgoing event webhooks (for example "message
-delivered" or "conversation resolved") to your servers. Poll the
-[API](/docs/api) for those. Outgoing webhooks are planned.
-</Callout>
+## Set up your webhook
 
-## 1. Create the trigger
+Each organization has **one** webhook URL. Only organization **Admins** can
+manage it.
 
-In ORQO open **Automations**, create an automation, pick the **Webhook
-Received** trigger and choose **Generate token**. Copy two values from the
-trigger panel:
+1. In ORQO open **Settings → Developer → Webhooks**.
+2. Enter your **Webhook URL**, select the **events** you want, and **Save**.
+3. Copy the **signing secret** shown right after the first save
+   (`whsec_…`). It is shown only once; store it on your server like an API
+   token.
 
-- the **Webhook URL**, `https://app.orqo.site/webhooks/automation/{trigger_token}`
-- the **Signing secret**. It is shown right after generating; keep it on your
-  server, like an API token.
+Saving again updates the URL, events or enabled state of the same webhook;
+the secret stays the same. **Rotate secret** issues a new secret (the old one
+stops working immediately). **Remove webhook** deletes the URL, its secret
+and its delivery history. **Send test** delivers a `webhook.test` event.
 
-**Regenerate token** issues a new URL and secret; the old ones stop working.
-Activate the automation: requests to an inactive automation are refused.
+The URL must be `https://` on port 443 and resolve to a public address.
+`localhost`, private, link-local and cloud-metadata addresses are refused,
+when you save and again on every delivery. Redirects are never followed.
 
-## 2. Sign and send the request
+## Events
 
-Every request must carry two headers:
+| Category | Event | When |
+| --- | --- | --- |
+| Contacts | `contact.created` | A contact is created (channel, inbox, import, API). |
+| | `contact.updated` | Profile fields change. Payload adds `changed_fields`. |
+| | `contact.deleted` | A contact is deleted. |
+| Conversations | `conversation.created` | A new conversation starts. |
+| | `conversation.updated` | `status` or `assigned_user_id` changes. Payload adds `changes: {field: {from, to}}`. |
+| | `conversation.resolved` | Status changes to `resolved`. |
+| | `conversation.reopened` | A resolved conversation is reopened. |
+| Messages | `message.received` | An inbound message is recorded. |
+| | `message.sent` | An outbound message is accepted by the provider. Sent once per message. |
+| | `message.failed` | An outbound message fails. Payload adds `error: {code, message}`. |
+| Pipeline | `lead.stage_changed` | A lead moves to another stage. Includes `from_stage`, `to_stage`, `is_won`, `is_lost`. |
+| | `lead.qualified` | A lead's score reaches the `hot` band. |
 
-| Header | Value |
+## Payload
+
+Every request has the same envelope:
+
+```json
+{
+  "id": "evt_01jbx6m2y8k6r8b8m2q5k3v9tz",
+  "type": "contact.created",
+  "created_at": "2026-11-03T14:00:00Z",
+  "organization_id": "org_2abc…",
+  "data": {
+    "id": 123,
+    "uuid": "9b1d…",
+    "phone_e164": "+201000000000",
+    "email": "jane@example.com",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "country": "EG",
+    "language": "en",
+    "opt_in_whatsapp": true,
+    "custom_fields": {},
+    "source": "whatsapp",
+    "created_at": "2026-11-03T14:00:00Z",
+    "updated_at": "2026-11-03T14:00:00Z"
+  }
+}
+```
+
+- `id` is the event id, stable across retries. Use it (or
+  `X-Orqo-Delivery-Id`) to ignore duplicates.
+- `data` ids are the same ids the [API](/docs/api) uses.
+- `contact.deleted` sends `{id, uuid, deleted_at}`.
+
+## Headers
+
+| Header | Example |
 | --- | --- |
-| `X-Orqo-Timestamp` | Current Unix time in seconds. Requests more than 5 minutes off are refused. |
-| `X-Orqo-Signature` | `sha256=` + hex HMAC-SHA256 of `{timestamp}.{raw body}` with the signing secret. |
+| `Content-Type` | `application/json` |
+| `User-Agent` | `Orqo-Webhooks/1.0 (+https://orqo.app)` |
+| `X-Orqo-Event` | `contact.created` |
+| `X-Orqo-Event-Id` | `evt_01jbx6…` |
+| `X-Orqo-Delivery-Id` | `whdel_01jbx6…` (same on every retry) |
+| `X-Orqo-Timestamp` | `1793714400` (Unix seconds, set per attempt) |
+| `X-Orqo-Signature` | `v1=5257a869e7ec…` |
+| `X-Orqo-Attempt` | `1` |
 
-Sign the **exact bytes** you send: serialize the JSON once and send that string.
+## Verify the signature
 
-<Tabs items={['Node.js', 'Python', 'PHP', 'cURL']}>
+1. Read the **raw** request body before parsing JSON.
+2. `expected = "v1=" + hex(HMAC_SHA256(signing_secret, timestamp + "." + raw_body))`.
+   The key is the whole secret, including `whsec_`.
+3. Compare with `X-Orqo-Signature` in constant time.
+4. Reject timestamps more than 5 minutes from now.
+5. Ignore delivery ids you have already processed.
+6. Respond `2xx` within 10 seconds; do heavy work asynchronously.
+
+<Tabs items={['Node.js', 'Python', 'PHP']}>
 <Tab value="Node.js">
 
 ```js
 import crypto from 'node:crypto';
+import express from 'express';
 
-const body = JSON.stringify({ event: 'order.paid', phone: '+201001234567', order_id: 'A-1042', total: '450.00' });
-const timestamp = Math.floor(Date.now() / 1000).toString();
-const signature = crypto.createHmac('sha256', process.env.ORQO_TRIGGER_SECRET)
-  .update(`${timestamp}.${body}`)
-  .digest('hex');
+const app = express();
 
-await fetch(process.env.ORQO_TRIGGER_URL, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Orqo-Timestamp': timestamp,
-    'X-Orqo-Signature': `sha256=${signature}`,
-    'Idempotency-Key': 'order-A-1042-paid',
-  },
-  body,
+app.post('/orqo/webhooks', express.raw({ type: 'application/json' }), (req, res) => {
+  const timestamp = req.get('X-Orqo-Timestamp') ?? '';
+  const signature = req.get('X-Orqo-Signature') ?? '';
+
+  if (!/^\d+$/.test(timestamp) || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) {
+    return res.status(400).send('stale timestamp');
+  }
+
+  const expected = 'v1=' + crypto.createHmac('sha256', process.env.ORQO_WEBHOOK_SECRET)
+    .update(`${timestamp}.`)
+    .update(req.body)
+    .digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).send('invalid signature');
+  }
+
+  const event = JSON.parse(req.body.toString('utf8'));
+  console.log('ORQO event', event.type, event.id);
+  res.status(204).end();
 });
 ```
 
@@ -66,77 +138,60 @@ await fetch(process.env.ORQO_TRIGGER_URL, {
 <Tab value="Python">
 
 ```python
-import hashlib, hmac, json, os, time, requests
+import hashlib, hmac, os, time
+from flask import Flask, request, abort
 
-body = json.dumps({"event": "order.paid", "phone": "+201001234567", "order_id": "A-1042"})
-timestamp = str(int(time.time()))
-signature = hmac.new(os.environ["ORQO_TRIGGER_SECRET"].encode(), f"{timestamp}.{body}".encode(), hashlib.sha256).hexdigest()
+app = Flask(__name__)
 
-requests.post(
-    os.environ["ORQO_TRIGGER_URL"],
-    data=body,
-    headers={
-        "Content-Type": "application/json",
-        "X-Orqo-Timestamp": timestamp,
-        "X-Orqo-Signature": f"sha256={signature}",
-        "Idempotency-Key": "order-A-1042-paid",
-    },
-)
+@app.post("/orqo/webhooks")
+def orqo_webhook():
+    raw = request.get_data()
+    timestamp = request.headers.get("X-Orqo-Timestamp", "")
+    signature = request.headers.get("X-Orqo-Signature", "")
+    if not timestamp.isdigit() or abs(time.time() - int(timestamp)) > 300:
+        abort(400)
+    expected = "v1=" + hmac.new(os.environ["ORQO_WEBHOOK_SECRET"].encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        abort(401)
+    event = request.get_json()
+    print("ORQO event", event["type"], event["id"])
+    return "", 204
 ```
 
 </Tab>
 <Tab value="PHP">
 
 ```php
-$body = json_encode(['event' => 'order.paid', 'phone' => '+201001234567', 'order_id' => 'A-1042']);
-$timestamp = (string) time();
-$signature = hash_hmac('sha256', "{$timestamp}.{$body}", env('ORQO_TRIGGER_SECRET'));
+$rawBody = file_get_contents('php://input');
+$timestamp = $_SERVER['HTTP_X_ORQO_TIMESTAMP'] ?? '';
+$signature = $_SERVER['HTTP_X_ORQO_SIGNATURE'] ?? '';
 
-Http::withBody($body, 'application/json')
-    ->withHeaders([
-        'X-Orqo-Timestamp' => $timestamp,
-        'X-Orqo-Signature' => "sha256={$signature}",
-        'Idempotency-Key' => 'order-A-1042-paid',
-    ])
-    ->post(env('ORQO_TRIGGER_URL'));
-```
+if (! ctype_digit($timestamp) || abs(time() - (int) $timestamp) > 300) {
+    http_response_code(400);
+    exit;
+}
 
-</Tab>
-<Tab value="cURL">
+$expected = 'v1='.hash_hmac('sha256', $timestamp.'.'.$rawBody, getenv('ORQO_WEBHOOK_SECRET'));
+if (! hash_equals($expected, $signature)) {
+    http_response_code(401);
+    exit;
+}
 
-```bash
-BODY='{"event":"order.paid","phone":"+201001234567","order_id":"A-1042"}'
-TS=$(date +%s)
-SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$ORQO_TRIGGER_SECRET" -hex | sed 's/^.* //')
-
-curl "$ORQO_TRIGGER_URL" \
-  -H "Content-Type: application/json" \
-  -H "X-Orqo-Timestamp: $TS" \
-  -H "X-Orqo-Signature: sha256=$SIG" \
-  -d "$BODY"
+$event = json_decode($rawBody, true, flags: JSON_THROW_ON_ERROR);
+http_response_code(204);
 ```
 
 </Tab>
 </Tabs>
 
-## 3. The payload
+## Retries
 
-Any JSON object. Its fields are available to the automation's steps as
-variables. Two fields are special:
-
-| Field | Effect |
-| --- | --- |
-| `email` | The automation runs for the contact with this email, if one exists. |
-| `phone` | Otherwise, the contact with this E.164 phone number. |
-
-## Responses
-
-| Status | Body | Meaning |
-| --- | --- | --- |
-| `202` | `{"status": "accepted"}` | The automation was started. |
-| `200` | `{"status": "duplicate"}` | Same signature or same `Idempotency-Key` seen before: nothing ran again. |
-| `404` | `{"error": "Automation not found or inactive."}` | Wrong URL, inactive automation, or a bad or expired signature. The reason is not revealed on purpose. |
-
-Retry on network errors and `5xx` with the same body and `Idempotency-Key`,
-re-signing with a fresh timestamp. Don't retry a `404`: check the URL, the
-secret and your clock.
+- Network errors, timeouts and HTTP `408`, `425`, `429` and `5xx` are retried
+  with exponential backoff (about 30 s, 2 min, 8 min, 32 min, 2 h), up to 6
+  attempts. `Retry-After` is honoured.
+- Any other `3xx` or `4xx` fails the delivery without retrying.
+- Requests time out after 10 seconds.
+- Each delivery, with its request and every attempt, is listed under
+  **Delivery history** for 30 days. A failed delivery can be retried from
+  there.
+- A disabled webhook receives nothing.

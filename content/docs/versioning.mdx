@@ -16,6 +16,14 @@ code) ships as a new version, announced here at least 90 days ahead.
 
 ## Changelog
 
+### 2026-11 — Outgoing webhooks
+
+- New: ORQO sends signed event notifications (contacts, conversations,
+  messages, pipeline) to one webhook URL per organization. See
+  [Webhooks](/docs/webhooks).
+- Removed: the automation **Webhook Received** trigger and its
+  `/webhooks/automation/{trigger_token}` URLs.
+
 ### 2026-10 — v1 cleanup
 
 The API moved to the conventions on these pages. If you integrated before:

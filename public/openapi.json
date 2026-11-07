@@ -2649,7 +2649,7 @@
           {
             "name": "from",
             "in": "query",
-            "description": "First day, `YYYY-MM-DD`. Defaults to 29 days ago.",
+            "description": "First day, `YYYY-MM-DD`, in the organization timezone (`meta.timezone`). Defaults to 29 days ago.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2659,7 +2659,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "Last day, `YYYY-MM-DD`. Defaults to today.",
+            "description": "Last day, `YYYY-MM-DD`, in the organization timezone. Defaults to today.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2689,11 +2689,15 @@
                         },
                         "to": {
                           "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
                         }
                       },
                       "required": [
                         "from",
-                        "to"
+                        "to",
+                        "timezone"
                       ]
                     }
                   },
@@ -2735,7 +2739,7 @@
           {
             "name": "from",
             "in": "query",
-            "description": "First day, `YYYY-MM-DD`. Defaults to 29 days ago.",
+            "description": "First day, `YYYY-MM-DD`, in the organization timezone (`meta.timezone`). Defaults to 29 days ago.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2745,7 +2749,7 @@
           {
             "name": "to",
             "in": "query",
-            "description": "Last day, `YYYY-MM-DD`. Defaults to today.",
+            "description": "Last day, `YYYY-MM-DD`, in the organization timezone. Defaults to today.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2772,7 +2776,10 @@
                         },
                         "channel_mix": {
                           "type": "array",
-                          "items": {}
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -2788,11 +2795,15 @@
                         },
                         "to": {
                           "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
                         }
                       },
                       "required": [
                         "from",
-                        "to"
+                        "to",
+                        "timezone"
                       ]
                     }
                   },
@@ -2861,7 +2872,10 @@
                         },
                         "failed_reasons": {
                           "type": "array",
-                          "items": {}
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
                         }
                       },
                       "required": [
@@ -2869,10 +2883,22 @@
                         "delivery_over_time",
                         "failed_reasons"
                       ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "timezone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "timezone"
+                      ]
                     }
                   },
                   "required": [
-                    "data"
+                    "data",
+                    "meta"
                   ]
                 }
               }
