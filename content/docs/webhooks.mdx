@@ -21,7 +21,8 @@ manage it.
 Saving again updates the URL, events or enabled state of the same webhook;
 the secret stays the same. **Rotate secret** issues a new secret (the old one
 stops working immediately). **Remove webhook** deletes the URL, its secret
-and its delivery history. **Send test** delivers a `webhook.test` event.
+and its logs. **Send test** delivers a `webhook.test` event
+(it shows up on the **Logs** tab).
 
 The URL must be `https://` on port 443 and resolve to a public address.
 `localhost`, private, link-local and cloud-metadata addresses are refused,
@@ -191,7 +192,8 @@ http_response_code(204);
   attempts. `Retry-After` is honoured.
 - Any other `3xx` or `4xx` fails the delivery without retrying.
 - Requests time out after 10 seconds.
-- Each delivery, with its request and every attempt, is listed under
-  **Delivery history** for 30 days. A failed delivery can be retried from
-  there.
+- Each delivery, with its request and every attempt, is listed on the
+  webhook's **Logs** tab for 30 days. Filter by status or event, or search by
+  delivery or event id (`X-Orqo-Delivery-Id`, `X-Orqo-Event-Id`). A failed
+  delivery can be retried from there.
 - A disabled webhook receives nothing.

@@ -53,10 +53,12 @@ New codes are added as features ship, so always keep a `default` branch.
 | 400 | `bad_request` | The request could not be read. | No |
 | 400 | `invalid_idempotency_key` | `Idempotency-Key` is empty, too long or not printable ASCII. | No |
 | 401 | `unauthenticated` | Missing, wrong, revoked or expired token. | No |
+| 401 | `account_inactive` | The token's user is suspended. | No |
 | 402 | `subscription_required` | The organization has no active plan. `details.state` says why. | No |
 | 402 | `plan_limit_reached` | A plan limit is used up. `details`: `key`, `limit`, `current`. | No |
 | 402 | `organization_suspended_for_plan`, `channel_suspended_for_plan` | The organization or the channel is over its plan. | No |
 | 403 | `forbidden` | The token may not do this. | No |
+| 403 | `capability_required` | The token's user lacks the permission for this action (for example managing campaigns). `details.capability` names it. | No |
 | 403 | `organization_required` | The token's organization is no longer available. | No |
 | 404 | `not_found` | No such resource in your organization, or no such path. | No |
 | 404 | `contact_not_found`, `whatsapp_channel_not_found` | `contact_id` / `channel_account_id` of a message is not yours. | No |
